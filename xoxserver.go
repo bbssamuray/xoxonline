@@ -93,7 +93,6 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			numOfPlayers--
 			user.conState = false
-			fmt.Println(user, "\n asdasd ", err)
 			break
 		}
 		user.message <- string(message)
