@@ -12,5 +12,7 @@ $ go run xoxserver.go -addr :80
 ```
 to run it on port 80.  
 
-![Screenshot](screenshot.png)
+<p align="center">
+  <img src="screenshot.png" width="500" title="screenshot">
+</p>
 
