@@ -1,0 +1,188 @@
+<canvas id="myCanvas" width="600" height="900"></canvas>
+
+<script>
+
+var canvas = document.getElementById("myCanvas");
+var ctx = canvas.getContext("2d");
+
+canvas.addEventListener("click", onClick, false);
+
+wsuri = "ws://" + window.location.host + window.location.pathname + "echo";
+
+let socket = new WebSocket(wsuri);
+
+
+var ballx, bally;
+var xpockets = 3;
+var ypockets = 3;
+var boardWidth = 600;
+var boardHeight = 600;
+
+var values = [];
+var turn;
+var currentTurn;
+var name;
+var opName = "Waiting";
+var wsOpen = 1; //status of the websocket
+var intervalId = null;
+
+function resetBoard(){
+  for (i = 0; i < xpockets*ypockets; i++) {
+          values[i] = 0
+      }
+}
+
+function askName() {
+  var txt;
+  person = prompt("Please enter your name:", "Name");
+  if (person == null || person == "" || person == "Name" || person == "Waiting") {
+    var nameArray = ["Hi", "There", "Little","Player"];
+    name = nameArray[Math.floor((Math.random() * 4))]
+  } else {
+    name = person;
+  }
+
+}
+
+var cycleCount = 0
+function DrawBoard(){
+  if (cycleCount == 0){
+    socket.send("init " + name);
+    cycleCount++
+  }
+
+  var opPrint = opName
+  if (opName == "Waiting"){
+    var nameCycle = ["Waiting", "Waiting.", "Waiting..","Waiting..."];
+    opPrint = nameCycle[Math.floor(cycleCount/100)%4];
+    cycleCount++;
+  }
+
+    for (i = 0; i <= xpockets; i++) {
+        ctx.moveTo(boardWidth/xpockets*i,0)
+        ctx.lineTo(boardWidth/xpockets*i, boardHeight);
+    } 
+    for (i = 0; i <= ypockets; i++) {
+        ctx.moveTo(0,boardHeight/ypockets*i)
+        ctx.lineTo(boardWidth,boardHeight/ypockets*i);
+    }
+    ctx.strokeStyle = "red";
+    ctx.stroke();
+    ctx.font = "40px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(name , canvas.width/4 , 700 , canvas.width/2 - 50)
+    ctx.fillText("VS" , canvas.width/2 , 700 , 400)
+    ctx.fillText(opPrint , canvas.width/100*80 , 700 , 300)
+
+    if (currentTurn == turn){ //Draw it under own name
+      ctx.fillText("||" , canvas.width/4 , 750 , canvas.width/2 - 50)
+    }else{                    //Draw it under opponent's name
+      ctx.fillText("||" , canvas.width/100*80 , 750 , 300)
+    }
+
+    for (i = 0; i < values.length; i++) {
+        switch(values[i]){
+            case 1: // X
+                ctx.font = "200px Arial";
+                ctx.fillStyle = "red";
+                ctx.textAlign = "center";
+                ctx.fillText("X", boardWidth/xpockets * (i % xpockets) + boardWidth/xpockets/2, boardHeight/ypockets * Math.floor(i / xpockets +1) - boardHeight/ypockets/8);
+            break;
+            case 2: // O
+                ctx.font = "200px Arial";
+                ctx.fillStyle = "red";
+                ctx.textAlign = "center";
+                ctx.fillText("O", boardWidth/xpockets * (i % xpockets) + boardWidth/xpockets/2, boardHeight/ypockets * Math.floor(i / xpockets +1) - boardHeight/ypockets/8);
+            break;
+        }
+    }
+}
+
+
+function onClick(e) {
+
+    var element = canvas;
+    var offsetX = 0, offsetY = 0
+
+        if (element.offsetParent) {
+      do {
+        offsetX += element.offsetLeft;
+        offsetY += element.offsetTop;
+      } while ((element = element.offsetParent));
+    }
+
+    clickedx = Math.floor( (e.pageX - offsetX) / (boardWidth/xpockets));
+    clickedy = Math.floor( (e.pageY - offsetY) / (boardHeight/ypockets));
+
+    if (currentTurn == turn){
+      message = "mv " + String(clickedx) + " " + String(clickedy)
+      socket.send(message);
+    }
+    
+}
+
+socket.onmessage = function(event) {
+  //alert(`[message] Data received from server: ${event.data}`);
+  message = String(event.data)
+  if (message.substring(0,2) == "op"){ // Format is "op <Opponent_Name> <UserTurnNumber> <CurrentTurn>"
+      resetBoard()
+      opName = message.substring(3,message.length-4)
+      turn = message.substring(message.length-3,message.length-2)
+      currentTurn = message.substring(message.length-1,message.length)
+  }
+  else if (message.substring(0,3) == "mvs"){
+    msgSplit = String(event.data).split(" ")
+    value = Number(msgSplit[1])
+    xcord = Number(msgSplit[2])
+    ycord = Number(msgSplit[3])
+    values[xpockets*ycord+xcord] = value
+    if (turn == 0){
+      turn = 1
+    }else{
+      turn = 0
+    }
+  }else if(message == "resetBoard"){
+    resetBoard()
+  }else{
+    alert(message)
+  }
+};
+
+socket.onclose = function(event) {
+  wsOpen = 0;
+};
+
+socket.onerror = function(error) {
+  alert(`[error] ${error.message}`);
+};
+
+function draw() {
+    if (wsOpen == 0) {
+      alert('It seems like the servers are down!');
+      clearInterval(intervalId);
+      return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.arc(ballx, bally, 10, 0, Math.PI*2);
+
+    ctx.fillStyle = "#0095DD";
+    DrawBoard()
+    ctx.fill();
+    ctx.closePath();
+}
+
+function sleep(milliseconds) {
+  const date = Date.now();
+  let currentDate = null;
+  do {
+    currentDate = Date.now();
+  } while (currentDate - date < milliseconds);
+}
+
+
+askName();
+resetBoard();
+intervalId = setInterval(draw, 15);
+
+</script>
