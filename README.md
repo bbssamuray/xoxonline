@@ -1,6 +1,11 @@
 # xoxonline
 Online xox game written with go
 
+You can get the go dependencies with this command
+```
+go get -u github.com/gorilla/websocket
+```
+
 Run with  
 ```
 $ go run xoxserver.go   
